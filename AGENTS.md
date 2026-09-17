@@ -1,56 +1,55 @@
 # AGENTS.md - UNSAReport CLI
 
-## Repository Overview
+Go CLI that scaffolds Typst-based lab reports, manages versioned templates/components, captures terminal output, and compiles submissions.
 
-Go CLI tool for automating lab report creation in UNSA Software Engineering program. Scaffolds Typst-based projects, manages versioned templates, captures terminal output, compiles submissions.
-
-## Quick Commands
+## Commands
 
 ```bash
 # Build
 go build ./cmd/unsarep
 
-# Run all tests (unit)
+# Unit tests (integration tests are skipped by default)
 go test ./...
 
-# Run integration tests (requires external tools)
-go test -tags integration ./internal/services/...
+# Integration tests — need external tools (typst, freeze, magick) on PATH
+go test -tags integration ./...
 
-# Lint
+# Single test / package
+go test -run TestName ./internal/services/...
+
+# Lint (gofmt + goimports enforced; revive/misspell)
 golangci-lint run
-
-# Single test
-go test -run TestSpecificName ./internal/cmd/...
 ```
 
 ## Architecture
 
-**Ports and Adapters pattern** with dependency injection:
+Ports and Adapters with dependency injection.
 
-* `internal/ports/` - Interfaces (Archiver, Compiler, Fetcher, etc.)
-* `internal/adapters/` - Concrete implementations (osfs, github, config, typst, zipper)
-* `internal/services/` - Business logic (install, update, prepare, capture, component)
-* `internal/cmd/` - CLI commands (cobra)
-* `internal/mocks/` - testify mocks for all port interfaces
+* `internal/ports/` — interfaces (Compiler, Archiver, Fetcher, Renderer, etc.)
+* `internal/adapters/` — concrete implementations (osfs, github, config, registry, typst, freeze, zipper)
+* `internal/services/` — business logic (install, update, prepare, capture, component, share)
+* `internal/cmd/` — cobra commands
+* `internal/mocks/` — testify mocks for port interfaces
+* `internal/dependencies/` — runtime checks for external tools
 
-Entry point: `cmd/unsarep/main.go` → `internal/cmd.Execute()`
+Entry point: `cmd/unsarep/main.go` → `internal/cmd.Execute()`.
 
 ## Key Facts
 
-* **Version control**: Uses Jujutsu (jj), not git directly
-* **Version injection**: Set via ldflags: `-X github.com/UNSAReport/UNSAReport/internal/cmd.Version={{.Version}}`
-* **External tools**: Typst, Freeze (charmbracelet), ImageMagick - validated at runtime, not build time
-* **Goroutine leak detection**: All test packages use `goleak.VerifyTestMain`
-* **Integration tests**: Require `//go:build integration` tag and external tools on PATH
-* **Config**: Uses viper with `UNSAREP_` env prefix
-* **Nix dev shell**: Run `nix develop` or `direnv allow` for pre-configured environment
+* **Version control is git, not jj.** Repo is a fork: `origin` → `F4brici0L4yme/UNSAReport-betterrules-sharedworkspace`, `upstream` → `UNSAReport/UNSAReport`.
+* **Version injection** via ldflags: `-X github.com/UNSAReport/UNSAReport/internal/ports.Version={{.Version}}` (this is what `flake.nix` uses; `internal/cmd.Version` is just an alias of `ports.Version`). Default version lives in `internal/ports/version.go`.
+* **External tools** validated at runtime (`internal/dependencies`): Typst, Freeze (charmbracelet), ImageMagick — note the ImageMagick binary is `magick`, not `convert`.
+* **Goroutine leak detection**: every test package has a `main_test.go` calling `goleak.VerifyTestMain`.
+* **Integration tests** carry `//go:build integration` and live in several packages (services, adapters/zipper, osfs, typst, freeze, github), not just `internal/services`.
+* **Config**: viper with `UNSAREP_` env prefix; project config is `unsareport.json` plus an auto-maintained `unsareport.lock`.
+* **Nix dev shell**: `nix develop` / `direnv allow`. The shell sets a project-local `GOPATH=$PWD/.go` (gitignored as `.go`).
+* **`unsarep share`** creates a disposable GitHub repo from the current dir via the `gh` CLI (git-init + initial commit when needed, private by default).
+* **Agent skills** in `.agents/skills/`: `report-header`, `report-content`, `report-code`, `report-terminal`, `report-references`, `report-review`, `browser-capture`, `puml-diagram`. The report header/tables/content live in the Typst template (separate `UNSAReport/templates` repo), not in this Go CLI. See `docs/guia-estudiante.md` for a Spanish quick-start guide.
 
-## Testing Patterns
+## Testing
 
-* Unit tests: `testify` (assert/require) + `mock` for port interfaces
-* Integration tests: `internal/services/e2e_test.go` with mock fetchers/registries
-* Test parallelism: Use `t.Parallel()` for independent tests
-* Test cleanup: Use `t.TempDir()` for filesystem tests
+* Unit tests: `testify` (assert/require) + `mock` for ports; `t.Parallel()` for independent tests, `t.TempDir()` for filesystem cleanup.
+* Integration tests additionally require network for the `adapters/github` tests (GitHub API) and the external tools on PATH.
 
 ## Build & Release
 
@@ -58,51 +57,24 @@ Entry point: `cmd/unsarep/main.go` → `internal/cmd.Execute()`
 # Development build
 go build ./cmd/unsarep
 
-# Release build with version
-go build -ldflags "-X [github.com/UNSAReport/UNSAReport/internal/cmd.Version=1.0.0](https://github.com/UNSAReport/UNSAReport/internal/cmd.Version=1.0.0)" ./cmd/unsarep
+# Release build with version (matches flake.nix ldflags)
+go build -ldflags "-X github.com/UNSAReport/UNSAReport/internal/ports.Version=1.0.0" ./cmd/unsarep
 
 # Nix build
 nix build
-
 ```
 
 ### Updating the Nix Vendor Hash
 
-When Go dependencies change, the Nix build will fail due to a mismatched `vendorHash`. To fix this:
+When Go dependencies change, the Nix build fails on a mismatched `vendorHash`:
 
-1. Open `flake.nix` (or your Nix build file) and set `vendorHash = "";` (or `lib.fakeHash`).
-2. Run the build with log output enabled:
-```bash
-nix build -L
-```
-3. The build will fail and print an error message showing the `got:` hash (e.g., `sha256-............................`).
-4. Copy that expected hash value and paste it back into your Nix file as the new `vendorHash`.
-
-## File Structure
-
-```
-cmd/unsarep/main.go          # Entry point
-internal/
-  cmd/                        # CLI commands (cobra)
-  adapters/                   # Port implementations
-    config/                   # Config file handling
-    github/                   # GitHub API fetcher
-    osfs/                     # OS filesystem operations
-    registry/                 # Template/component registries
-    typst/                    # Typst compiler wrapper
-    zipper/                   # ZIP archiver
-  ports/                      # Interfaces
-  services/                   # Business logic
-  mocks/                      # Test mocks
-  dependencies/               # External tool checks
-schemas/                      # JSON schemas for config
-
-```
+1. Set `vendorHash = "";` (or `lib.fakeHash`) in `flake.nix`.
+2. Run `nix build -L`.
+3. Copy the `got:` hash from the failure output back into `vendorHash`.
 
 ## Conventions
 
-* Error handling: Use `samber/oops` for stack traces in debug mode
-* CLI framework: cobra commands with viper config binding
-* Logging: `log/slog` with text handler to stderr
-* Formatting: `gofmt` + `goimports` (enforced by golangci-lint)
-* Linters: revive (exported/package-comments disabled), misspell
+* Error handling: `samber/oops` for stack traces in debug mode.
+* CLI framework: cobra + viper config binding.
+* Logging: `log/slog` text handler to stderr.
+* Linters: revive (exported/package-comments disabled), misspell.
