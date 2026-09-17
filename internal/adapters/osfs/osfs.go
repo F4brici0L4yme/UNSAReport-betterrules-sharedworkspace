@@ -52,8 +52,12 @@ func (a *Adapter) WriteFileAtomic(path string, data []byte, perm os.FileMode) er
 		return oops.With("path", path).Wrapf(err, "create temp file")
 	}
 	tmpName := tmp.Name()
+	renamed := false
 	defer func() {
-		if err := os.Remove(tmpName); err != nil {
+		if renamed {
+			return
+		}
+		if err := os.Remove(tmpName); err != nil && !os.IsNotExist(err) {
 			slog.Warn("failed to remove temp file", "path", tmpName, "error", err)
 		}
 	}()
@@ -73,6 +77,7 @@ func (a *Adapter) WriteFileAtomic(path string, data []byte, perm os.FileMode) er
 	if err := os.Rename(tmpName, path); err != nil {
 		return oops.With("path", path).Wrapf(err, "rename temp file")
 	}
+	renamed = true
 	return nil
 }
 
@@ -85,21 +90,14 @@ func (a *Adapter) CopyFile(src string, dst string, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := in.Close(); err != nil {
-			slog.Warn("failed to close source file", "path", src, "error", err)
-		}
-	}()
+	defer in.Close()
+
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := out.Close(); err != nil {
-			slog.Warn("failed to close destination file", "path", dst, "error", err)
-		}
-	}()
 	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
 		return err
 	}
 	return out.Close()
@@ -130,6 +128,11 @@ func (a *Adapter) Getwd() (string, error) {
 // Remove deletes the file or empty directory at path.
 func (a *Adapter) Remove(path string) error {
 	return os.Remove(path)
+}
+
+// RemoveAll deletes the path and any children it contains.
+func (a *Adapter) RemoveAll(path string) error {
+	return os.RemoveAll(path)
 }
 
 // Stat returns file info for the named path.
