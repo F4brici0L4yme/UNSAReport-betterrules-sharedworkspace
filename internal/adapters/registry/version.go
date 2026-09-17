@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"cmp"
 	"fmt"
 	"slices"
 
@@ -42,7 +41,7 @@ func resolveVersionFromMap(
 	}
 
 	slices.SortFunc(candidates, func(a, b *semver.Version) int {
-		return cmp.Compare(a.String(), b.String())
+		return a.Compare(b)
 	})
 
 	return candidates[len(candidates)-1], nil
@@ -62,7 +61,7 @@ func resolveLatestFromMap(versions map[string]*semver.Version) (*semver.Version,
 	}
 
 	slices.SortFunc(all, func(a, b *semver.Version) int {
-		return cmp.Compare(a.String(), b.String())
+		return a.Compare(b)
 	})
 
 	return all[len(all)-1], nil

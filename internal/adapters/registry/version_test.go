@@ -77,6 +77,25 @@ func TestResolveVersionFromMap(t *testing.T) {
 	}
 }
 
+func TestResolveVersionFromMap_MultiDigitVersions(t *testing.T) {
+	v1_9, _ := semver.NewVersion("1.9.0")
+	v1_10, _ := semver.NewVersion("1.10.0")
+
+	availableVersions := map[string]*semver.Version{
+		"1.9.0":  v1_9,
+		"1.10.0": v1_10,
+	}
+	distTags := map[string]*semver.Version{"latest": v1_10}
+
+	got, err := resolveVersionFromMap(availableVersions, distTags, "^1.0.0")
+	if err != nil {
+		t.Fatalf("resolveVersionFromMap() error = %v", err)
+	}
+	if got.String() != "1.10.0" {
+		t.Errorf("resolveVersionFromMap() = %v, want 1.10.0", got)
+	}
+}
+
 func TestResolveLatestFromMap(t *testing.T) {
 	v1, _ := semver.NewVersion("1.0.0")
 	v2, _ := semver.NewVersion("2.0.0")
