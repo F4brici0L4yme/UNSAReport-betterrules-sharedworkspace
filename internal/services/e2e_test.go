@@ -53,7 +53,7 @@ func mockMultiTemplateFiles() map[string][]byte {
 			}
 		}`),
 		"common/bibliography.bib": []byte(`@article{test, title={Test}}`),
-		"report.typ":             []byte(`#set page(paper: "a4")\n= Lab Report`),
+		"report.typ":              []byte(`#set page(paper: "a4")\n= Lab Report`),
 	}
 }
 
@@ -148,13 +148,12 @@ func TestE2E_SingleModeWorkflow(t *testing.T) {
 
 		assert.Equal(t, "output.png", renderedPath)
 
-		// 2 commands + 2 sleeps + 1 final sleep = 5
-		require.Len(t, renderedCommands, 5)
+		// Plain instructions map 1:1 to Command entries (timing is handled by the renderer).
+		require.Len(t, renderedCommands, 2)
 		assert.Equal(t, "Command", renderedCommands[0].Type)
 		assert.Equal(t, "ls -la", renderedCommands[0].Args)
-		assert.Equal(t, "Sleep", renderedCommands[1].Type)
-		assert.Equal(t, "Command", renderedCommands[2].Type)
-		assert.Equal(t, "cat README.md", renderedCommands[2].Args)
+		assert.Equal(t, "Command", renderedCommands[1].Type)
+		assert.Equal(t, "cat README.md", renderedCommands[1].Args)
 
 		assert.Contains(t, stdout.String(), "Capturing instruction: ls -la")
 	})
@@ -579,6 +578,10 @@ func (m *e2eMockCompiler) Compile(ctx context.Context, reportPath, reportPDF str
 	if m.compileFn != nil {
 		return m.compileFn(ctx, reportPath, reportPDF, inputs)
 	}
+	return nil
+}
+
+func (m *e2eMockCompiler) Watch(ctx context.Context, reportPath, reportPDF string, inputs map[string]string) error {
 	return nil
 }
 
