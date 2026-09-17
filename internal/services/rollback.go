@@ -45,7 +45,7 @@ func NewRollbackService(fs ports.FileSystem, cfg ports.ConfigStore, stdout, stde
 func (s *RollbackService) CreateBackup(destDir string, entries []Entry, cfg ports.UnsareportConfig) error {
 	backupPath := filepath.Join(destDir, backupDir)
 
-	if err := s.FS.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+	if err := s.FS.RemoveAll(backupPath); err != nil && !os.IsNotExist(err) {
 		slog.Warn("could not remove old backup", "error", err)
 	}
 
@@ -143,7 +143,7 @@ func (s *RollbackService) Rollback(destDir string) error {
 		restored++
 	}
 
-	if err := s.FS.Remove(backupPath); err != nil {
+	if err := s.FS.RemoveAll(backupPath); err != nil {
 		slog.Warn("could not remove backup after restore", "error", err)
 	}
 

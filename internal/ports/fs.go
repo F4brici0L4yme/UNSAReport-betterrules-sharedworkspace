@@ -16,5 +16,6 @@ type FileSystem interface {
 	Chdir(dir string) error
 	Getwd() (string, error)
 	Remove(path string) error
+	RemoveAll(path string) error
 	Stat(name string) (os.FileInfo, error)
 }

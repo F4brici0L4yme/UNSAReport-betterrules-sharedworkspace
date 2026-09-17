@@ -31,6 +31,7 @@ func TestRollbackService_CreateBackup(t *testing.T) {
 	fs.On("ReadFile", mock.Anything).Return([]byte("original"), nil).Maybe()
 	fs.On("WriteFileAtomic", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	fs.On("Remove", mock.Anything).Return(nil).Maybe()
+	fs.On("RemoveAll", mock.Anything).Return(nil).Maybe()
 
 	cfg := mocks.NewConfigStore(t)
 
@@ -101,6 +102,7 @@ func (f *rollbackTestFS) ReadDir(dirname string) ([]os.DirEntry, error) { return
 func (f *rollbackTestFS) Chdir(dir string) error                        { return os.Chdir(dir) }
 func (f *rollbackTestFS) Getwd() (string, error)                        { return os.Getwd() }
 func (f *rollbackTestFS) Remove(path string) error                      { return os.Remove(path) }
+func (f *rollbackTestFS) RemoveAll(path string) error                   { return os.RemoveAll(path) }
 func (f *rollbackTestFS) Stat(name string) (os.FileInfo, error)         { return os.Stat(name) }
 
 func TestRollbackService_Rollback_NoBackup(t *testing.T) {

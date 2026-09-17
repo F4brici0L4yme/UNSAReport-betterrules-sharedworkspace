@@ -424,6 +424,52 @@ func (_c *FileSystem_Remove_Call) RunAndReturn(run func(string) error) *FileSyst
 	return _c
 }
 
+// RemoveAll provides a mock function with given fields: path
+func (_m *FileSystem) RemoveAll(path string) error {
+	ret := _m.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveAll")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(path)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// FileSystem_RemoveAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveAll'
+type FileSystem_RemoveAll_Call struct {
+	*mock.Call
+}
+
+// RemoveAll is a helper method to define mock.On call
+//   - path string
+func (_e *FileSystem_Expecter) RemoveAll(path interface{}) *FileSystem_RemoveAll_Call {
+	return &FileSystem_RemoveAll_Call{Call: _e.mock.On("RemoveAll", path)}
+}
+
+func (_c *FileSystem_RemoveAll_Call) Run(run func(path string)) *FileSystem_RemoveAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *FileSystem_RemoveAll_Call) Return(_a0 error) *FileSystem_RemoveAll_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FileSystem_RemoveAll_Call) RunAndReturn(run func(string) error) *FileSystem_RemoveAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SameContent provides a mock function with given fields: a, b
 func (_m *FileSystem) SameContent(a []byte, b []byte) bool {
 	ret := _m.Called(a, b)
