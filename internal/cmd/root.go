@@ -36,6 +36,7 @@ func setupCLI() {
 		newWatchCmd(),
 		newCaptureCmd(),
 		newComponentCmd(),
+		newShareCmd(),
 		newCompletionCmd(),
 	)
 	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
